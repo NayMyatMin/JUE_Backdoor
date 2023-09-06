@@ -1,11 +1,9 @@
 import numpy as np
-import sys
-import torch
-from torchvision import transforms as T
+import sys, torch
 
 class JUE_Backdoor:
     def __init__(self, model, submodel, anchor_positions, shape, num_classes=10, steps=1000,
-                batch_size=32, asr_bound=0.9, init_alpha=1, init_beta=1e-3, lr=1, clip_max=1.0):
+                batch_size=32, asr_bound=0.9, init_alpha=1, init_beta=1e-3, lr=0.1, clip_max=1.0):
 
         self.model = model
         self.submodel = submodel
@@ -148,14 +146,15 @@ class JUE_Backdoor:
                 y_batch = y_set[idx*self.batch_size : (idx+1)*self.batch_size]
 
                 # map pattern variables to the valid range
-                pattern_pos =   torch.clamp(pattern_pos_tensor * self.clip_max, min=0.0, max=self.clip_max)
-                pattern_neg = - torch.clamp(pattern_neg_tensor * self.clip_max, min=0.0, max=self.clip_max)
+                pattern_pos = 0.5 * (torch.tanh(pattern_pos_tensor) + 1) * self.clip_max
+                pattern_neg = -0.5 * (torch.tanh(pattern_neg_tensor) + 1) * self.clip_max
 
                 delta = pattern_pos + pattern_neg 
                 if delta_0 is None:
                     delta_0 = delta.clone().detach()  
 
                 x_adv = torch.clamp(x_batch + delta, min=0.0, max=self.clip_max)
+                x_adv_0 = torch.clamp(x_batch + delta_0, min=0.0, max=self.clip_max)
                 optimizer.zero_grad()
 
                 output = self.model(x_adv)
@@ -163,8 +162,8 @@ class JUE_Backdoor:
                 acc = pred.eq(y_batch.view_as(pred)).sum().item() / pred.size(0)
 
                 # Neuron Maximization Term 
-                activations_delta = self.submodel(delta.unsqueeze(1))[:, self.anchor_positions]
-                activations_delta_0 = self.submodel(delta_0.unsqueeze(1))[:, self.anchor_positions]
+                activations_delta = self.submodel(x_adv)[:, self.anchor_positions]
+                activations_delta_0 = self.submodel(x_adv_0)[:, self.anchor_positions]
                 neuron_max_term = torch.norm(activations_delta - 10 * activations_delta_0, p=2)
                 reg_pos  = torch.max(torch.tanh(pattern_pos_tensor / 10) / (2 - self.epsilon) + 0.5, axis=0)[0]
                 reg_neg  = torch.max(torch.tanh(pattern_neg_tensor / 10) / (2 - self.epsilon) + 0.5, axis=0)[0]

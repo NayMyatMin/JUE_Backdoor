@@ -4,7 +4,8 @@ from preprocess.dataset import MNISTData, CIFAR10Data
 import numpy as np
 from tabulate import tabulate
 from collections import defaultdict
-
+from architecture.utils import MNIST_Network
+from architecture.wrn import WideResNet
 logging.basicConfig(format='%(message)s', level=logging.INFO)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
@@ -46,7 +47,12 @@ def load_data(batch_size, dataset, mode, exclude_label=None):
         return loader_class(batch_size, mode)
 
 def find_anchor_positions(model, target_class, k=1):
-    last_layer_weights = model.main[-1].weight.data
+    if isinstance(model, MNIST_Network):
+        last_layer_weights = model.main[-1].weight.data
+    elif isinstance(model, WideResNet):
+        last_layer_weights = model.fc.weight.data
+    else:
+        raise ValueError("Unsupported model type.")
     target_weights = last_layer_weights[target_class]
     _, sorted_indices = torch.sort(target_weights, descending=True)
     anchor_positions = sorted_indices[:k]
