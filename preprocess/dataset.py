@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 import sys, os
 
 class BaseData:
-    def __init__(self, batch_size, data_name, dataset_class, data_size, data_dir='../data'):
+    def __init__(self, batch_size, data_name, dataset_class, data_size, data_dir='./data'):
         self.batch_size = batch_size
         self.data_name = data_name
         self.data_dir = data_dir

@@ -19,6 +19,7 @@ def main(args):
 
 if __name__ == '__main__':
     args = Parse_Process()
-    start = time.time(); main(args); end = time.time()
     weight_masking()
+    start = time.time(); main(args); end = time.time()
+    
     logging.info(f'Running time: {(end - start) / 60:.4f} m')
