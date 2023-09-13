@@ -18,6 +18,8 @@ class BaseData:
         return Compose([ToTensor()])
 
     def get_dataflow(self):
+        if not os.path.exists(self.data_dir):
+            os.makedirs(self.data_dir)
         is_train = True if self.data_name == 'train' else False
         transform = self.data_augmentor()
         sys.stdout = open(os.devnull, 'w')
@@ -33,7 +35,7 @@ class BaseData:
             self.iter = iter(self.data)
             batch = next(self.iter)
         return batch[0], batch[1]  # Returns images and labels
-
+    
 class MNISTData(BaseData):
     def __init__(self, batch_size, data_name='val'):
         super().__init__(batch_size, data_name, MNIST, {'train': 60000, 'val': 10000})

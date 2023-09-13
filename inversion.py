@@ -169,7 +169,7 @@ class JUE_Backdoor:
                 reg_neg  = torch.max(torch.tanh(pattern_neg_tensor / 10) / (2 - self.epsilon) + 0.5, axis=0)[0]
                 loss_reg = torch.sum(reg_pos) + torch.sum(reg_neg)
 
-                loss = alpha * neuron_max_term + alpha * loss_reg
+                loss = neuron_max_term + alpha * loss_reg
                 loss.backward()
                 optimizer.step()
 

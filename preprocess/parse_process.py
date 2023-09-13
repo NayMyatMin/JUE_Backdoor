@@ -86,7 +86,7 @@ class Parse_Process:
             model = self.load_model_based_on_dataset(model_file_path)
             model.eval()
             logging.info('Load model from: {}'.format(self.model_path))
-            return model, model_file_path, true_target_label
+            return model, model_file_path, true_target_label, attack_spec_path
         
     def get_submodel(self, model):
         if isinstance(model, MNIST_Network):

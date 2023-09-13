@@ -37,9 +37,9 @@ def calculate_accuracy(model, dataloader, target_label=None):
     return correct / total * 100
 
 def get_data_loader(dataset_name, root_path, transform, batch_size=1000):
-    if dataset_name == 'mnist':
+    if dataset_name == 'MNIST':
         return DataLoader(MNIST(root=root_path, train=False, download=True, transform=transform), batch_size=batch_size, shuffle=False)
-    elif dataset_name == 'cifar10':
+    elif dataset_name == 'CIFAR10':
         return DataLoader(CIFAR10(root=root_path, train=False, download=True, transform=transform), batch_size=batch_size, shuffle=False)
 
 def target_asr(model, true_target_label, attack_spec, dataset, dataset_root='./data', batch_size=1000, swm_model=None):
@@ -60,5 +60,5 @@ def target_asr(model, true_target_label, attack_spec, dataset, dataset_root='./d
     if swm_model is not None:
         results['SWM_Accuracy'] = calculate_accuracy(swm_model, clean_loader)
         results['SWM_ASR'] = calculate_accuracy(swm_model, backdoored_loader, target_label=true_target_label)
-        
-    return results
+    
+    print(results)
