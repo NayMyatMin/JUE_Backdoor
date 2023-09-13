@@ -1,7 +1,7 @@
 import os, torch, time, logging
 from inversion import JUE_Backdoor
 from preprocess.dataset import MNISTData, CIFAR10Data
-from target_asr import target_asr
+from target_asr import TargetASR
 
 import numpy as np
 from tabulate import tabulate
@@ -124,5 +124,5 @@ class Evaluate_Model:
         for target in range(self.args.num_classes):
             self.evaluate_and_log_single_target(target)
         self.logger.print_final_results()  
-        target_asr(self.model, self.true_target_label, self.attack_spec, self.args.dataset)
+        TargetASR(self.args.dataset).target_asr(self.model, self.true_target_label, self.attack_spec)
         logging.info(f'Generation Time: {(time.time() - time_start) / 60:.4f} m')
