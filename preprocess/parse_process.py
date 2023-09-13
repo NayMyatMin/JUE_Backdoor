@@ -1,8 +1,8 @@
-import sys; sys.path.append('/mnt/nay/projects/PixelBackdoor/FINAL/architecture')
 import argparse, logging
 import os, random, torch
 import numpy as np
 import torch.nn as nn
+
 from architecture.utils import MNIST_Network
 from architecture.wrn import WideResNet
 
@@ -42,7 +42,7 @@ class Parse_Process:
         return args
     
     def set_model_path(self, dataset):
-        model_paths = {'MNIST': '../dataset/M-Patch/', 'CIFAR10': '../dataset/C-Blended/'}
+        model_paths = {'MNIST': '../dataset/M-Blended/', 'CIFAR10': '../dataset/C-Patch-1/'}
         return model_paths.get(dataset, 'default_path/')
     
     def get_sub_dirs(self):

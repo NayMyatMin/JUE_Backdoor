@@ -80,6 +80,7 @@ class Evaluate_Model:
 
         pattern = backdoor.generate(target, x_val, y_val, attack_size=self.args.attack_size)
         size = np.count_nonzero(pattern.abs().sum(0).cpu().numpy())
+        # size = pattern.abs().sum().item() # L1 norm
 
         data_loader = load_data(50, self.args.dataset, 'train')
         x_val, y_val = get_data(data_loader, target)
@@ -110,4 +111,8 @@ class Evaluate_Model:
         for target in range(self.args.num_classes):
             self.evaluate_and_log_single_target(target)
         self.print_final_results()
+
+        trigger_sizes = self.l0_norm_list.clone().detach() 
+        success_rates = torch.tensor([float(result['Success Rate']) for result in self.all_results], dtype=torch.float32)  
+              
         logging.info(f'Generation Time: {(time.time() - time_start) / 60:.4f} m')

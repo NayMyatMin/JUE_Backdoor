@@ -3,7 +3,7 @@ import sys, torch
 
 class JUE_Backdoor:
     def __init__(self, model, submodel, anchor_positions, shape, num_classes=10, steps=1000,
-                batch_size=32, asr_bound=0.9, init_alpha=1, init_beta=1e-3, lr=0.1, clip_max=1.0):
+                batch_size=32, asr_bound=0.9, init_alpha=1e-3, lr=0.5, clip_max=1.0):
 
         self.model = model
         self.submodel = submodel
@@ -14,15 +14,15 @@ class JUE_Backdoor:
         self.batch_size = batch_size
         self.asr_bound = asr_bound
         self.init_alpha = init_alpha
-        self.init_beta = init_beta
+        self.init_alpha = init_alpha
         self.lr = lr
         self.clip_max = clip_max
 
         self.device = torch.device('cuda')
         self.epsilon = 1e-7
         self.patience = 10
-        self.beta_multiplier_up   = 1.5
-        self.beta_multiplier_down = 1.5 ** 1.5
+        self.alpha_multiplier_up   = 1.5
+        self.alpha_multiplier_down = 1.5 ** 1.5
         self.pattern_shape = self.input_shape
 
     def initialize_parameters(self):
@@ -35,9 +35,9 @@ class JUE_Backdoor:
 
         # hyper-parameters to dynamically adjust loss weight
         alpha = self.init_alpha
-        beta = self.init_beta
-        beta_up_counter   = 0
-        beta_down_counter = 0
+        alpha = self.init_alpha
+        alpha_up_counter   = 0
+        alpha_down_counter = 0
 
         # initialize patterns with random values
         for i in range(2):
@@ -52,7 +52,7 @@ class JUE_Backdoor:
                 pattern_neg_tensor = torch.Tensor(init_pattern).to(self.device)
                 pattern_neg_tensor.requires_grad = True
         return pattern_best, pattern_pos_best, pattern_neg_best, reg_best,\
-            pixel_best, alpha, beta, beta_up_counter, beta_down_counter, pattern_pos_tensor, pattern_neg_tensor
+            pixel_best, alpha, alpha, alpha_up_counter, alpha_down_counter, pattern_pos_tensor, pattern_neg_tensor
 
     def input_for_attack(self, target, x_set, y_set, attack_size=100):
         # For all-to-one attack
@@ -108,26 +108,26 @@ class JUE_Backdoor:
             pattern_best = pattern_pos_best + pattern_neg_best
         return pattern_best, reg_best, pixel_best, pattern_pos_best, pattern_neg_best
 
-    def adjust_beta(self, avg_acc, beta, beta_up_counter, beta_down_counter):
+    def adjust_alpha(self, avg_acc, alpha, alpha_up_counter, alpha_down_counter):
         # helper variables for adjusting loss weight
         if avg_acc >= self.asr_bound:
-            beta_up_counter += 1
-            beta_down_counter = 0
+            alpha_up_counter += 1
+            alpha_down_counter = 0
         else:
-            beta_up_counter = 0
-            beta_down_counter += 1
+            alpha_up_counter = 0
+            alpha_down_counter += 1
 
         # adjust loss weight
-        if beta_up_counter >= self.patience:
-            beta_up_counter = 0
-            if beta == 0:
-                beta = self.init_beta
+        if alpha_up_counter >= self.patience:
+            alpha_up_counter = 0
+            if alpha == 0:
+                alpha = self.init_alpha
             else:
-                beta *= self.beta_multiplier_up
-        elif beta_down_counter >= self.patience:
-            beta_down_counter = 0
-            beta /= self.beta_multiplier_down
-        return beta, beta_up_counter, beta_down_counter
+                alpha *= self.alpha_multiplier_up
+        elif alpha_down_counter >= self.patience:
+            alpha_down_counter = 0
+            alpha /= self.alpha_multiplier_down
+        return alpha, alpha_up_counter, alpha_down_counter
 
     def log_and_monitor(self, step, avg_acc, avg_loss, avg_loss_reg, reg_best, pixel_best):
         sys.stdout.write('\rstep: {:3d}, attack: {:.2f}, loss: {:.2f}, '\
@@ -137,7 +137,7 @@ class JUE_Backdoor:
                             + 'size: {:.0f}  '.format(pixel_best))
         sys.stdout.flush()
 
-    def train_backdoor(self, x_set, y_set, pattern_pos_tensor, pattern_neg_tensor, alpha, beta, optimizer):
+    def train_backdoor(self, x_set, y_set, pattern_pos_tensor, pattern_neg_tensor, alpha, optimizer):
             loss_reg_list, loss_list, acc_list = [], [], []
             delta_0 = None
 
@@ -169,7 +169,7 @@ class JUE_Backdoor:
                 reg_neg  = torch.max(torch.tanh(pattern_neg_tensor / 10) / (2 - self.epsilon) + 0.5, axis=0)[0]
                 loss_reg = torch.sum(reg_pos) + torch.sum(reg_neg)
 
-                loss = alpha * neuron_max_term + beta * loss_reg
+                loss = alpha * neuron_max_term + alpha * loss_reg
                 loss.backward()
                 optimizer.step()
 
@@ -180,8 +180,9 @@ class JUE_Backdoor:
             return pattern_pos, pattern_neg, loss_reg_list, loss_list, acc_list
 
     def generate(self, target, x_set, y_set, attack_size=100):
-        pattern_best, pattern_pos_best, pattern_neg_best, reg_best, pixel_best, alpha, beta, \
-            beta_up_counter, beta_down_counter, pattern_pos_tensor, pattern_neg_tensor = self.initialize_parameters()
+        pattern_best, pattern_pos_best, pattern_neg_best, reg_best, pixel_best, alpha, alpha, \
+            alpha_up_counter, alpha_down_counter, pattern_pos_tensor, pattern_neg_tensor = self.initialize_parameters()
+        # y_set in this case is the target_set
         x_set, y_set = self.input_for_attack(target, x_set, y_set, attack_size)
 
         optimizer = torch.optim.Adam([pattern_pos_tensor, pattern_neg_tensor], lr=self.lr, betas=(0.5, 0.9))
@@ -195,7 +196,7 @@ class JUE_Backdoor:
             y_set = y_set[indices]
 
             pattern_pos, pattern_neg, loss_reg_list, loss_list, acc_list = self.train_backdoor(
-                x_set, y_set, pattern_pos_tensor, pattern_neg_tensor, alpha, beta, optimizer)
+                x_set, y_set, pattern_pos_tensor, pattern_neg_tensor, alpha, optimizer)
 
             avg_loss_reg, avg_loss, avg_acc = self.calculate_average(loss_reg_list, loss_list, acc_list)
 
@@ -207,7 +208,7 @@ class JUE_Backdoor:
                 pattern_best, avg_acc, avg_loss_reg, pixel_cur, reg_best, pixel_best, pattern_pos, pattern_neg, 
                         pattern_pos_tensor, pattern_neg_tensor, pattern_pos_best, pattern_neg_best, threshold)
 
-            beta, beta_up_counter, beta_down_counter = self.adjust_beta(avg_acc, beta, beta_up_counter, beta_down_counter)
+            alpha, alpha_up_counter, alpha_down_counter = self.adjust_alpha(avg_acc, alpha, alpha_up_counter, alpha_down_counter)
 
             if step % 10 == 0:
                 self.log_and_monitor(step, avg_acc, avg_loss, avg_loss_reg, reg_best, pixel_best)

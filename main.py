@@ -1,5 +1,7 @@
-import os, time, logging
+import sys, os, time, logging
+list(map(sys.path.append, ['./architecture/', './preprocess/', './weight_mask/']))
 from preprocess.parse_process import Parse_Process
+from weight_mask.weight_masking import weight_masking
 from evaluate import Evaluate_Model
 
 def main(args):
@@ -18,4 +20,5 @@ def main(args):
 if __name__ == '__main__':
     args = Parse_Process()
     start = time.time(); main(args); end = time.time()
+    weight_masking()
     logging.info(f'Running time: {(end - start) / 60:.4f} m')
