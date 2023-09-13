@@ -10,15 +10,17 @@ def main(args):
         for dir, _, files in os.walk(sub_dir):
             model, model_file_path, true_target_label, attack_spec = args.process_directory(dir, files)
             submodel = args.get_submodel(model).to(args.device)
-            if args.phase == 'evaluate': 
-                Evaluate_Model(model, submodel, model_file_path, true_target_label, attack_spec, args).evaluate_all_targets()
-            else: 
-                logging.info('Option [{}] is not supported!'.format(args.phase))
+            # if args.phase == 'evaluate': 
+            #     Evaluate_Model(model, submodel, model_file_path, true_target_label, attack_spec, args).evaluate_all_targets()
+            # else: 
+            #     logging.info('Option [{}] is not supported!'.format(args.phase))
 
             logging.info(f"{'*'*50}\n")
+
+            # Soft Weight Masking
+            weight_masking(model, model_file_path, true_target_label, attack_spec)
 
 if __name__ == '__main__':
     args = Parse_Process()
     start = time.time(); main(args); end = time.time()
-    # weight_masking()
     logging.info(f'Running time: {(end - start) / 60:.4f} m')

@@ -47,7 +47,7 @@ class TargetASR:
                     correct += (predicted == target_label).sum().item()
         return correct / total * 100
 
-    def target_asr(self, model, true_target_label, attack_spec, swm_model=None):
+    def target_asr(self, model, swm_model, true_target_label, attack_spec):
         attack_specification = torch.load(attack_spec)
         backdoored_loader = self.create_backdoored_dataset(true_target_label, attack_specification)
         
@@ -55,19 +55,7 @@ class TargetASR:
         results['Org_Accuracy'] = self.calculate_accuracy(model, self.clean_loader)
         results['Org_ASR'] = self.calculate_accuracy(model, backdoored_loader, target_label=true_target_label)
         
-        if swm_model is not None:
-            results['SWM_Accuracy'] = self.calculate_accuracy(swm_model, self.clean_loader)
-            results['SWM_ASR'] = self.calculate_accuracy(swm_model, backdoored_loader, target_label=true_target_label)
+        results['SWM_Accuracy'] = self.calculate_accuracy(swm_model, self.clean_loader)
+        results['SWM_ASR'] = self.calculate_accuracy(swm_model, backdoored_loader, target_label=true_target_label)
         
         print(results)
-
-
-
-
-
-
-
-
-
-
-

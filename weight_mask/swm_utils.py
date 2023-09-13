@@ -53,8 +53,8 @@ def prepare_data(batch_size, inner):
     # Data preprocessing
     x_train, y_train = trainset.data, trainset.targets
     x_test, y_test = testset.data, testset.targets
-    x_train = x_train.unsqueeze(1).to(dtype=torch.float32) / 255.0  
-    x_test = x_test.unsqueeze(1).to(dtype=torch.float32) / 255.0  
+    x_train = x_train.unsqueeze(1).to(dtype=torch.float32)  
+    x_test = x_test.unsqueeze(1).to(dtype=torch.float32)    
     y_train = y_train.to(dtype=torch.long)
     y_test = y_test.to(dtype=torch.long)
 
@@ -72,3 +72,4 @@ def prepare_data(batch_size, inner):
     clean_test_loader = DataLoader(clean_test, batch_size=batch_size, num_workers=0)
 
     return clean_val_loader, clean_test_loader, inner_iters
+

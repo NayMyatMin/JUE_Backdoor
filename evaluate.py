@@ -124,5 +124,4 @@ class Evaluate_Model:
         for target in range(self.args.num_classes):
             self.evaluate_and_log_single_target(target)
         self.logger.print_final_results()  
-        TargetASR(self.args.dataset).target_asr(self.model, self.true_target_label, self.attack_spec)
         logging.info(f'Generation Time: {(time.time() - time_start) / 60:.4f} m')
