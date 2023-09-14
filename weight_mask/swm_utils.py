@@ -1,5 +1,6 @@
 from torch.utils.data import DataLoader, RandomSampler, TensorDataset
-from torchvision.datasets import MNIST
+import torchvision.transforms as transforms
+from torchvision.datasets import MNIST, CIFAR10
 from collections import OrderedDict
 import numpy as np
 import torch, random
@@ -45,31 +46,43 @@ def Regularization(model):
             L2 += torch.norm(param, 2)
     return L1, L2
 
-def prepare_data(batch_size, inner):
-    # Load MNIST dataset
-    trainset = MNIST(root='../data', train=True, download=True, transform=None)
-    testset = MNIST(root='../data', train=False, download=True, transform=None)
+def prepare_data(dataset_name, batch_size, inner, samples=500, num_workers=4):
+    transform = transforms.Compose([transforms.ToTensor()])
 
-    # Data preprocessing
+    if dataset_name == 'MNIST':
+        trainset = MNIST(root='../data', train=True, download=True, transform=transform)
+        testset = MNIST(root='../data', train=False, download=True, transform=transform)
+    
+    elif dataset_name == 'CIFAR10':
+        trainset = CIFAR10(root='../data', train=True, download=True, transform=transform)
+        testset = CIFAR10(root='../data', train=False, download=True, transform=transform)
+
     x_train, y_train = trainset.data, trainset.targets
     x_test, y_test = testset.data, testset.targets
-    x_train = x_train.unsqueeze(1).to(dtype=torch.float32)  
-    x_test = x_test.unsqueeze(1).to(dtype=torch.float32)    
-    y_train = y_train.to(dtype=torch.long)
-    y_test = y_test.to(dtype=torch.long)
 
-    # Create validation and test sets
-    num_samples = 500
-    rand_idx = random.sample(list(np.arange(y_test.shape[0])), int(num_samples))
-    ot_idx = [i for i in range(y_test.shape[0]) if i not in rand_idx]
-    clean_val = TensorDataset(x_test[rand_idx].clone().detach(), y_test[rand_idx].clone().detach())
-    clean_test = TensorDataset(x_test[ot_idx].clone().detach(), y_test[ot_idx].clone().detach())
+    # Explicitly convert to float32
+    if dataset_name == 'MNIST':
+        x_train = x_train.unsqueeze(1).to(dtype=torch.float32)
+        x_test = x_test.unsqueeze(1).to(dtype=torch.float32)
+    elif dataset_name == 'CIFAR10':
+        x_train = torch.tensor(x_train.transpose((0, 3, 1, 2)), dtype=torch.float32)
+        x_test = torch.tensor(x_test.transpose((0, 3, 1, 2)), dtype=torch.float32)
 
-    # Create DataLoader objects
-    inner_iters = int(len(clean_val)/batch_size)*inner
+    y_train = torch.tensor(y_train, dtype=torch.long)
+    y_test = torch.tensor(y_test, dtype=torch.long)
+    
+    # Create Validation and Test Sets
+    rand_idx = random.sample(list(range(len(y_test))), int(samples))
+    ot_idx = [i for i in range(len(y_test)) if i not in rand_idx]
+    
+    clean_val = TensorDataset(x_test[rand_idx], y_test[rand_idx])
+    clean_test = TensorDataset(x_test[ot_idx], y_test[ot_idx])
+    
+    # Create DataLoader Objects
+    inner_iters = int(len(clean_val) / batch_size) * inner
     random_sampler = RandomSampler(data_source=clean_val, replacement=True, num_samples=inner_iters * batch_size)
-    clean_val_loader = DataLoader(clean_val, batch_size=batch_size, shuffle=False, sampler=random_sampler, num_workers=0)
-    clean_test_loader = DataLoader(clean_test, batch_size=batch_size, num_workers=0)
-
+    
+    clean_val_loader = DataLoader(clean_val, batch_size=batch_size, shuffle=False, sampler=random_sampler, num_workers=num_workers)
+    clean_test_loader = DataLoader(clean_test, batch_size=batch_size, num_workers=num_workers)
+    
     return clean_val_loader, clean_test_loader, inner_iters
-

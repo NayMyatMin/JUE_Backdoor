@@ -17,7 +17,7 @@ def main(args):
 
             logging.info(f"{'*'*50}\n")
 
-            weight_masking(model, model_file_path, true_target_label, attack_spec)
+            weight_masking(model, args.dataset, model_file_path, true_target_label, attack_spec)
 
 if __name__ == '__main__':
     args = Parse_Process()

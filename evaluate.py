@@ -1,7 +1,6 @@
 import os, torch, time, logging
 from inversion import JUE_Backdoor
 from preprocess.dataset import MNISTData, CIFAR10Data
-from target_asr import TargetASR
 
 import numpy as np
 from tabulate import tabulate

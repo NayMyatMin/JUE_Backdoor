@@ -8,7 +8,6 @@ import torch.nn.functional as F
 import torch.nn.init as init
 from torch.nn.parameter import Parameter
 
-
 class MaskedConv2d(nn.Conv2d):
     def __init__(self, *args, **kwargs):
         super(MaskedConv2d, self).__init__(*args, **kwargs)

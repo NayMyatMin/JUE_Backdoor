@@ -52,10 +52,10 @@ class TargetASR:
         backdoored_loader = self.create_backdoored_dataset(true_target_label, attack_specification)
         
         results = {}
-        results['Org_Accuracy'] = self.calculate_accuracy(model, self.clean_loader)
+        results['Org_ACC'] = self.calculate_accuracy(model, self.clean_loader)
         results['Org_ASR'] = self.calculate_accuracy(model, backdoored_loader, target_label=true_target_label)
         
-        results['SWM_Accuracy'] = self.calculate_accuracy(swm_model, self.clean_loader)
+        results['SWM_ACC'] = self.calculate_accuracy(swm_model, self.clean_loader)
         results['SWM_ASR'] = self.calculate_accuracy(swm_model, backdoored_loader, target_label=true_target_label)
         
         print(results)
