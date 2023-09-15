@@ -144,7 +144,7 @@ def weight_masking(model, dataset_name, model_file_path, true_target_label, atta
     train_test_model(swm_model, criterion, clean_val_loader, clean_test_loader, mask_optimizer, lr_scheduler, outer, inner_iters)
 
     print('Running time: {:.4f} s'.format(time.time() - start))
-    TargetASR('dataset_name').target_asr(model, swm_model, true_target_label, attack_spec)
+    TargetASR(dataset_name).target_asr(model, swm_model, true_target_label, attack_spec)
 
 if __name__ == "__main__":
     weight_masking()

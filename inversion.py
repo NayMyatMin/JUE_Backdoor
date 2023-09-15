@@ -2,8 +2,8 @@ import numpy as np
 import sys, torch
 
 class JUE_Backdoor:
-    def __init__(self, model, submodel, anchor_positions, shape, num_classes=10, steps=1000,
-                batch_size=32, asr_bound=0.9, init_alpha=1e-3, lr=0.5, clip_max=1.0):
+    def __init__(self, model, submodel, anchor_positions, shape, num_classes=10, steps=3000,
+                batch_size=32, asr_bound=0.9, init_alpha=1e-3, lr=0.1, clip_max=1.0):
 
         self.model = model
         self.submodel = submodel
@@ -13,7 +13,6 @@ class JUE_Backdoor:
         self.steps = steps
         self.batch_size = batch_size
         self.asr_bound = asr_bound
-        self.init_alpha = init_alpha
         self.init_alpha = init_alpha
         self.lr = lr
         self.clip_max = clip_max
@@ -129,9 +128,9 @@ class JUE_Backdoor:
             alpha /= self.alpha_multiplier_down
         return alpha, alpha_up_counter, alpha_down_counter
 
-    def log_and_monitor(self, step, avg_acc, avg_loss, avg_loss_reg, reg_best, pixel_best):
-        sys.stdout.write('\rstep: {:3d}, attack: {:.2f}, loss: {:.2f}, '\
-                            .format(step, avg_acc, avg_loss)\
+    def log_and_monitor(self, target, step, avg_acc, avg_loss, avg_loss_reg, reg_best, pixel_best):
+        sys.stdout.write('\rTarget:{}, step: {:3d}, attack: {:.2f}, loss: {:.2f}, '\
+                            .format(target, step, avg_acc, avg_loss)\
                             + 'reg: {:.2f}, reg_best: {:.2f}, '\
                             .format(avg_loss_reg, reg_best)\
                             + 'size: {:.0f}  '.format(pixel_best))
@@ -202,7 +201,8 @@ class JUE_Backdoor:
 
             threshold = self.clip_max / 255.0
             pattern_cur = self.remove_small_pattern(pattern_pos, pattern_neg, threshold)
-            pixel_cur = np.count_nonzero(np.sum(np.abs(pattern_cur.cpu().numpy()), axis=0))
+            # pixel_cur = np.count_nonzero(np.sum(np.abs(pattern_cur.cpu().numpy()), axis=0))
+            pixel_cur = torch.norm(pattern_cur.cpu(), p=1)
 
             pattern_best, reg_best, pixel_best, pattern_pos_best, pattern_neg_best  = self.update_best_pattern(
                 pattern_best, avg_acc, avg_loss_reg, pixel_cur, reg_best, pixel_best, pattern_pos, pattern_neg, 
@@ -211,8 +211,8 @@ class JUE_Backdoor:
             alpha, alpha_up_counter, alpha_down_counter = self.adjust_alpha(avg_acc, alpha, alpha_up_counter, alpha_down_counter)
 
             if step % 10 == 0:
-                self.log_and_monitor(step, avg_acc, avg_loss, avg_loss_reg, reg_best, pixel_best)
-
+                self.log_and_monitor(target, step, avg_acc, avg_loss, avg_loss_reg, reg_best, pixel_best)
+                    
         sys.stdout.write('\x1b[2K')
         sys.stdout.flush()
 

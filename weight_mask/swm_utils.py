@@ -65,8 +65,8 @@ def prepare_data(dataset_name, batch_size, inner, samples=500, num_workers=4):
         x_train = x_train.unsqueeze(1).to(dtype=torch.float32)
         x_test = x_test.unsqueeze(1).to(dtype=torch.float32)
     elif dataset_name == 'CIFAR10':
-        x_train = torch.tensor(x_train.transpose((0, 3, 1, 2)), dtype=torch.float32)
-        x_test = torch.tensor(x_test.transpose((0, 3, 1, 2)), dtype=torch.float32)
+        x_train = torch.tensor(x_train.transpose((0, 3, 1, 2)), dtype=torch.float32)/255
+        x_test = torch.tensor(x_test.transpose((0, 3, 1, 2)), dtype=torch.float32)/255  
 
     y_train = torch.tensor(y_train, dtype=torch.long)
     y_test = torch.tensor(y_test, dtype=torch.long)

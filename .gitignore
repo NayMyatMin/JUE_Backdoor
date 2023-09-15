@@ -155,6 +155,7 @@ cython_debug/
 # Datasets
 data/
 dataset/
+SWM/
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
