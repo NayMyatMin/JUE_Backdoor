@@ -17,7 +17,7 @@ class ResultLogger:
 
     def log_single_target(self, target, size, asr):
         self.l0_norm_list[target] = size
-        self.all_results.append({'Target': target, 'Trigger Size': size, 'Success Rate': f"{asr:.2f}"})
+        self.all_results.append({'Target': target, 'Trigger Size': f"{size:.2f}", 'Success Rate': f"{asr:.2f}"})
 
     def print_final_results(self):
         headers = ["Metrics"] + [str(result["Target"]) for result in self.all_results]
@@ -28,32 +28,46 @@ class ResultLogger:
         logging.info(tabulate(table_data, headers=headers, tablefmt='grid', numalign="right"))
         logging.info(self.l0_norm_list)
 
-def get_data(loader, exclude_label, size_per_class=100):
+from collections import defaultdict
+import torch
+import numpy as np
+
+def get_balanced_data(loader, exclude_label, size_per_class, num_batches=10):
     x_data = defaultdict(list)
     y_data = defaultdict(list)
     class_counters = defaultdict(int)
 
-    for i in range(50):  # Increase this number based on your dataset size
+    # Accumulate data over multiple batches to ensure sufficient samples
+    for _ in range(num_batches):
         x_batch, y_batch = loader.get_next_batch()
-        
         for x, y in zip(x_batch, y_batch):
             if y != exclude_label:
-                x_data[y].append(x.clone().detach()) 
-                y_data[y].append(y.clone().detach())  
-                class_counters[y] += 1
-
-        if all(count >= size_per_class for count in class_counters.values()):
-            break
+                x_data[y.item()].append(x)  
+                y_data[y.item()].append(y)
+                class_counters[y.item()] += 1
 
     balanced_x_data = []
     balanced_y_data = []
+
+    # Create balanced dataset based on the size_per_class
     for cls, samples in x_data.items():
-        balanced_x_data.extend(samples[:size_per_class])
-        balanced_y_data.extend(y_data[cls][:size_per_class])
+        if class_counters[cls] >= size_per_class:
+            balanced_x_data.extend(samples[:size_per_class])
+            balanced_y_data.extend([cls] * size_per_class)
+
+    # Handle the case where no balanced data could be formed
+    if not balanced_x_data:
+        print("Error: No balanced data could be created.")
+        return None, None
 
     # Convert lists to PyTorch tensors
     balanced_x_data = torch.stack(balanced_x_data)
-    balanced_y_data = torch.tensor(balanced_y_data)
+    balanced_y_data = torch.tensor(balanced_y_data, dtype=torch.long)
+
+    # print(balanced_x_data.shape, balanced_y_data.shape)
+    # class_counts = np.bincount(balanced_y_data)
+    # for class_idx, count in enumerate(class_counts):
+    #     print(f'Class {class_idx}: {count} samples')
 
     return balanced_x_data, balanced_y_data
 
@@ -65,9 +79,9 @@ def load_data(batch_size, dataset, mode, exclude_label=None):
     else:
         return loader_class(batch_size, mode)
     
-def load_and_preprocess_data(dataset, batch_size, mode, exclude_label=None, size_per_class=100):
+def load_and_preprocess_data(dataset, batch_size, mode, exclude_label=None, size_per_class=10):
     data_loader = load_data(batch_size, dataset, mode)
-    x_val, y_val = get_data(data_loader, exclude_label, size_per_class)
+    x_val, y_val = get_balanced_data(data_loader, exclude_label, size_per_class)
     y_val = torch.LongTensor(y_val)
     return x_val, y_val
 
@@ -100,18 +114,27 @@ class Evaluate_Model:
         return backdoor.generate(target, x_val, y_val, attack_size=self.args.attack_size)
     
     def evaluate_attack(self, pattern, x_val, target):
-        x_val = x_val.clone().detach().to(self.args.device)
+        x_val = x_val.detach().to(self.args.device)        
         x_adv = torch.clamp(x_val + pattern, 0, 1)
-        pred = self.model(x_adv).argmax(dim=1)
+        pred = self.model(x_adv).argmax(dim=1)        
         correct = (pred == target).sum().item()
         asr = correct / pred.size(0)
+        
+        del x_val, x_adv, pred
+        torch.cuda.empty_cache()
+        
         return asr
 
     def evaluate(self, target):
-        x_val, y_val = load_and_preprocess_data(self.args.dataset, 50, 'train', target)
-        pattern = self.generate_backdoor(x_val, y_val, target)        
-        size = np.count_nonzero(pattern.abs().sum(0).cpu().numpy())
-        asr = self.evaluate_attack(pattern, x_val, target)        
+        x_val, y_val = load_and_preprocess_data(self.args.dataset, 512, 'train', target)
+        pattern = self.generate_backdoor(x_val, y_val, target)
+
+        del x_val, y_val
+        torch.cuda.empty_cache()
+
+        size = torch.norm(pattern, p=1)
+        x_val, y_val = load_and_preprocess_data(self.args.dataset, 512, 'train', target)
+        asr = self.evaluate_attack(pattern, x_val, target)
         return size, asr
 
     def evaluate_and_log_single_target(self, target):
