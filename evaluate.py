@@ -39,12 +39,10 @@ class ResultLogger:
         logging.info(self.l0_norm_list)
 
 class Evaluate_Model:
-    def __init__(self, model, submodel, model_file_path, true_target_label, attack_spec, args, dataloader) -> None:
+    def __init__(self, model, submodel, model_file_path, args, dataloader) -> None:
         self.model = model
         self.submodel = submodel
         self.model_file_path = model_file_path
-        self.true_target_label = true_target_label
-        self.attack_spec = attack_spec
         self.args = args
         self.dataloader = dataloader
         self.logger = ResultLogger(self.args.num_classes) 

@@ -42,7 +42,7 @@ class Parse_Process:
         return args
     
     def set_model_path(self, dataset):
-        model_paths = {'MNIST': './dataset/M-Blended/', 'CIFAR10': './dataset/C-Patch-2/'}
+        model_paths = {'MNIST': './dataset/M-Benign/', 'CIFAR10': './dataset/C-Blended/'}
         return model_paths.get(dataset, 'default_path/')
     
     def get_sub_dirs(self):
@@ -80,14 +80,20 @@ class Parse_Process:
 
     def process_directory(self, dir, files):
         model_file_path, attack_spec_path = self.get_model_and_attack_spec(dir, files)
-        if model_file_path and attack_spec_path:
+        model = self.load_model_based_on_dataset(model_file_path)
+        model.eval()
+
+        model_info = model_file_path.rsplit("/", 2)[1]
+        logging.info(f'Model: {model_info}')
+        logging.info(f'Load model from: {self.model_path}')
+
+        true_target_label = None
+        if attack_spec_path:
             true_target_label = torch.load(attack_spec_path)["target_label"]
-            logging.info(f'Model: {model_file_path.rsplit("/", 2)[1]}, True_Target: {true_target_label}')
-            model = self.load_model_based_on_dataset(model_file_path)
-            model.eval()
-            logging.info('Load model from: {}'.format(self.model_path))
-            return model, model_file_path, true_target_label, attack_spec_path
-        
+            logging.info(f'True_Target: {true_target_label}')
+
+        return model, model_file_path, true_target_label, attack_spec_path
+
     def get_submodel(self, model):
         if isinstance(model, MNIST_Network):
             sub_model_layers = list(model.main.children())[:-1]

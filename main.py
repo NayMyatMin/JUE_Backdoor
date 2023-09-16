@@ -15,7 +15,7 @@ def main(args):
             model, model_file_path, true_target_label, attack_spec = args.process_directory(dir, files)
             submodel = args.get_submodel(model).to(args.device)
             if args.phase == 'evaluate': 
-                eval_model = Evaluate_Model(model, submodel, model_file_path, true_target_label, attack_spec, args, dataloader)
+                eval_model = Evaluate_Model(model, submodel, model_file_path, args, dataloader)
                 eval_model.evaluate_all_targets()
             else: 
                 logging.info('Option [{}] is not supported!'.format(args.phase))
