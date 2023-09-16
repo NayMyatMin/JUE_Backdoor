@@ -3,7 +3,7 @@ import sys, torch
 
 class JUE_Backdoor:
     def __init__(self, model, submodel, anchor_positions, shape, num_classes=10, steps=3000,
-                batch_size=32, asr_bound=0.9, init_alpha=1e-3, lr=0.1, clip_max=1.0):
+                batch_size=32, asr_bound=0.95, init_alpha=1e-3, lr=0.1, clip_max=1.0):
 
         self.model = model
         self.submodel = submodel
@@ -21,7 +21,10 @@ class JUE_Backdoor:
         self.inf_counter = 0 
         self.inf_threshold = 100 
         self.early_stopping_counter = 0
-        self.early_stopping_threshold = 1000
+        self.early_stopping_threshold = 500
+        self.lr_adjust_counter = 0
+        self.lr_adjust_threshold = 500
+        self.lr_decay_factor = 0.9
 
         self.device = torch.device('cuda')
         self.epsilon = 1e-7
@@ -113,7 +116,7 @@ class JUE_Backdoor:
             pattern_best = pattern_pos_best + pattern_neg_best
         return pattern_best, reg_best, pixel_best, pattern_pos_best, pattern_neg_best
     
-    def check_early_stopping(self, prev_pixel_best, pixel_best):
+    def check_early_stopping(self, prev_pixel_best, pixel_best, optimizer):
         stop_training = False
         if pixel_best >= prev_pixel_best:
             self.early_stopping_counter += 1
@@ -125,7 +128,17 @@ class JUE_Backdoor:
         else:
             self.inf_counter = 0
 
-        if self.early_stopping_counter >= self.early_stopping_threshold or self.inf_counter >= self.inf_threshold:
+        if self.early_stopping_counter >= self.lr_adjust_threshold:
+            self.lr_adjust_counter += 1
+            if self.lr_adjust_counter == 1:
+                for param_group in optimizer.param_groups:
+                    param_group['lr'] *= self.lr_decay_factor
+                self.early_stopping_counter = 0  # Reset the counter
+            elif self.lr_adjust_counter == 2:
+                # Stop training if learning rate adjustment didn't help
+                stop_training = True
+
+        if self.inf_counter >= self.inf_threshold:
             stop_training = True
 
         return stop_training
@@ -232,7 +245,7 @@ class JUE_Backdoor:
                 pattern_best, avg_acc, avg_loss_reg, pixel_cur, reg_best, pixel_best, pattern_pos, pattern_neg, 
                         pattern_pos_tensor, pattern_neg_tensor, pattern_pos_best, pattern_neg_best, threshold)
             
-            stop_training = self.check_early_stopping(prev_pixel_best, pixel_best)
+            stop_training = self.check_early_stopping(prev_pixel_best, pixel_best, optimizer)
             if stop_training:
                 break
 
