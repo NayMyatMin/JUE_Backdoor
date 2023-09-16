@@ -17,6 +17,12 @@ class JUE_Backdoor:
         self.lr = lr
         self.clip_max = clip_max
 
+        # Early Stopping Thresholds
+        self.inf_counter = 0 
+        self.inf_threshold = 100 
+        self.early_stopping_counter = 0
+        self.early_stopping_threshold = 1000
+
         self.device = torch.device('cuda')
         self.epsilon = 1e-7
         self.patience = 10
@@ -106,6 +112,23 @@ class JUE_Backdoor:
 
             pattern_best = pattern_pos_best + pattern_neg_best
         return pattern_best, reg_best, pixel_best, pattern_pos_best, pattern_neg_best
+    
+    def check_early_stopping(self, prev_pixel_best, pixel_best):
+        stop_training = False
+        if pixel_best >= prev_pixel_best:
+            self.early_stopping_counter += 1
+        else:
+            self.early_stopping_counter = 0
+
+        if pixel_best == float('inf'):
+            self.inf_counter += 1
+        else:
+            self.inf_counter = 0
+
+        if self.early_stopping_counter >= self.early_stopping_threshold or self.inf_counter >= self.inf_threshold:
+            stop_training = True
+
+        return stop_training
 
     def adjust_alpha(self, avg_acc, alpha, alpha_up_counter, alpha_down_counter):
         # helper variables for adjusting loss weight
@@ -179,6 +202,7 @@ class JUE_Backdoor:
             return pattern_pos, pattern_neg, loss_reg_list, loss_list, acc_list
 
     def generate(self, target, x_set, y_set, attack_size=100):
+        prev_pixel_best = float('inf')
         pattern_best, pattern_pos_best, pattern_neg_best, reg_best, pixel_best, alpha, alpha, \
             alpha_up_counter, alpha_down_counter, pattern_pos_tensor, pattern_neg_tensor = self.initialize_parameters()
         # y_set in this case is the target_set
@@ -207,7 +231,12 @@ class JUE_Backdoor:
             pattern_best, reg_best, pixel_best, pattern_pos_best, pattern_neg_best  = self.update_best_pattern(
                 pattern_best, avg_acc, avg_loss_reg, pixel_cur, reg_best, pixel_best, pattern_pos, pattern_neg, 
                         pattern_pos_tensor, pattern_neg_tensor, pattern_pos_best, pattern_neg_best, threshold)
+            
+            stop_training = self.check_early_stopping(prev_pixel_best, pixel_best)
+            if stop_training:
+                break
 
+            prev_pixel_best = pixel_best
             alpha, alpha_up_counter, alpha_down_counter = self.adjust_alpha(avg_acc, alpha, alpha_up_counter, alpha_down_counter)
 
             if step % 10 == 0:

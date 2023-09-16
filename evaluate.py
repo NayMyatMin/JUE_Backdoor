@@ -61,9 +61,7 @@ class Evaluate_Model:
         correct = (pred == target).sum().item()
         asr = correct / pred.size(0)
         
-        del x_val, x_adv, pred
-        torch.cuda.empty_cache()
-        
+        del x_val, x_adv, pred        
         return asr
 
     def evaluate(self, target):
@@ -72,8 +70,6 @@ class Evaluate_Model:
         pattern = self.generate_backdoor(x_val, y_val, target)
 
         del x_val, y_val
-        torch.cuda.empty_cache()
-
         size = torch.norm(pattern, p=1)
         x_val, y_val = evaluate_data.load_and_preprocess_data()
         asr = self.evaluate_attack(pattern, x_val, target)
