@@ -39,13 +39,14 @@ class ResultLogger:
         logging.info(self.l0_norm_list)
 
 class Evaluate_Model:
-    def __init__(self, model, submodel, model_file_path, true_target_label, attack_spec, args) -> None:
+    def __init__(self, model, submodel, model_file_path, true_target_label, attack_spec, args, dataloader) -> None:
         self.model = model
         self.submodel = submodel
         self.model_file_path = model_file_path
         self.true_target_label = true_target_label
         self.attack_spec = attack_spec
         self.args = args
+        self.dataloader = dataloader
         self.logger = ResultLogger(self.args.num_classes) 
 
     def generate_backdoor(self, x_val, y_val, target):
@@ -65,13 +66,13 @@ class Evaluate_Model:
         return asr
 
     def evaluate(self, target):
-        evaluate_data = Evaluate_Data(256, self.args.dataset, 'train', target, 10)
-        x_val, y_val = evaluate_data.load_and_preprocess_data()
+        evaluate_data = Evaluate_Data(256, self.args.dataset, 'train', target, size_per_class=5)
+        x_val, y_val = evaluate_data.load_and_preprocess_data(self.dataloader)
         pattern = self.generate_backdoor(x_val, y_val, target)
 
         del x_val, y_val
         size = torch.norm(pattern, p=1)
-        x_val, y_val = evaluate_data.load_and_preprocess_data()
+        x_val, y_val = evaluate_data.load_and_preprocess_data(self.dataloader)
         asr = self.evaluate_attack(pattern, x_val, target)
         return size, asr
 

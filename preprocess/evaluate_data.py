@@ -3,7 +3,7 @@ from collections import defaultdict
 import torch, numpy
 
 class Evaluate_Data:
-    def __init__(self, batch_size, dataset, mode, exclude_label=None, size_per_class=10):
+    def __init__(self, batch_size, dataset, mode, exclude_label=None, size_per_class=5):
         self.batch_size = batch_size
         self.dataset = dataset
         self.mode = mode
@@ -12,6 +12,7 @@ class Evaluate_Data:
         self.dataset_loader_map = {'MNIST': MNISTData, 'CIFAR10': CIFAR10Data}
 
     def log_balanced_data_info(self, balanced_x_data, balanced_y_data):
+        # For debugging purposes only - call from evaluate function
         print(balanced_x_data.shape, balanced_y_data.shape)
         class_counts = numpy.bincount(balanced_y_data.numpy())  
         for class_idx, count in enumerate(class_counts):
@@ -51,8 +52,7 @@ class Evaluate_Data:
         loader_class = self.dataset_loader_map.get(self.dataset)
         return loader_class(self.batch_size, self.mode)
 
-    def load_and_preprocess_data(self):
-        data_loader = self.load_data()
-        x_val, y_val = self.get_balanced_data(data_loader)
+    def load_and_preprocess_data(self, dataloader):
+        x_val, y_val = self.get_balanced_data(dataloader)
         y_val = torch.LongTensor(y_val)
         return x_val, y_val

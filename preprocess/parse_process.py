@@ -42,7 +42,7 @@ class Parse_Process:
         return args
     
     def set_model_path(self, dataset):
-        model_paths = {'MNIST': './dataset/M-Blended/', 'CIFAR10': './dataset/C-Patch-3/'}
+        model_paths = {'MNIST': './dataset/M-Blended/', 'CIFAR10': './dataset/C-Patch-2/'}
         return model_paths.get(dataset, 'default_path/')
     
     def get_sub_dirs(self):
