@@ -3,12 +3,11 @@ from collections import defaultdict
 import torch, numpy
 
 class Evaluate_Data:
-    def __init__(self, batch_size, dataset, mode, exclude_label=None, size_per_class=5):
+    def __init__(self, batch_size, dataset, mode, exclude_label=None):
         self.batch_size = batch_size
         self.dataset = dataset
         self.mode = mode
         self.exclude_label = exclude_label
-        self.size_per_class = size_per_class
         self.dataset_loader_map = {'MNIST': MNISTData, 'CIFAR10': CIFAR10Data}
 
     def log_balanced_data_info(self, balanced_x_data, balanced_y_data):
@@ -18,7 +17,7 @@ class Evaluate_Data:
         for class_idx, count in enumerate(class_counts):
             print(f'Class {class_idx}: {count} samples')
 
-    def get_balanced_data(self, loader, num_batches=10):
+    def get_balanced_data(self, loader, size_per_class=5, num_batches=10):
         x_data = defaultdict(list)
         y_data = defaultdict(list)
         class_counters = defaultdict(int)
@@ -35,9 +34,9 @@ class Evaluate_Data:
         balanced_y_data = []
 
         for cls, samples in x_data.items():
-            if class_counters[cls] >= self.size_per_class:
-                balanced_x_data.extend(samples[:self.size_per_class])
-                balanced_y_data.extend([cls] * self.size_per_class)
+            if class_counters[cls] >= size_per_class:
+                balanced_x_data.extend(samples[:size_per_class])
+                balanced_y_data.extend([cls] * size_per_class)
 
         if not balanced_x_data:
             print("Error: No balanced data could be created.")
@@ -52,7 +51,7 @@ class Evaluate_Data:
         loader_class = self.dataset_loader_map.get(self.dataset)
         return loader_class(self.batch_size, self.mode)
 
-    def load_and_preprocess_data(self, dataloader):
-        x_val, y_val = self.get_balanced_data(dataloader)
+    def load_and_preprocess_data(self, dataloader, size_per_class=5):
+        x_val, y_val = self.get_balanced_data(dataloader, size_per_class)
         y_val = torch.LongTensor(y_val)
         return x_val, y_val

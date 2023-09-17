@@ -36,15 +36,13 @@ class ResultLogger:
         table_data = [trigger_sizes, success_rates]
         logging.info('\t')
         logging.info(tabulate(table_data, headers=headers, tablefmt='grid', numalign="right"))
-        logging.info(self.l0_norm_list)
 
 class Evaluate_Model:
-    def __init__(self, model, submodel, model_file_path, args, dataloader) -> None:
+    def __init__(self, model, submodel, model_file_path, args) -> None:
         self.model = model
         self.submodel = submodel
         self.model_file_path = model_file_path
         self.args = args
-        self.dataloader = dataloader
         self.logger = ResultLogger(self.args.num_classes) 
 
     def generate_backdoor(self, x_val, y_val, target):
@@ -63,24 +61,16 @@ class Evaluate_Model:
         del x_val, x_adv, pred        
         return asr
 
-    def evaluate(self, target):
-        evaluate_data = Evaluate_Data(256, self.args.dataset, 'train', target, size_per_class=5)
-        x_val, y_val = evaluate_data.load_and_preprocess_data(self.dataloader)
+    def evaluate(self, target, generate_data, validate_data):
+        x_val, y_val = generate_data  
         pattern = self.generate_backdoor(x_val, y_val, target)
-
+        
         del x_val, y_val
         size = torch.norm(pattern, p=1)
-        x_val, y_val = evaluate_data.load_and_preprocess_data(self.dataloader)
+        x_val, y_val = validate_data  
         asr = self.evaluate_attack(pattern, x_val, target)
         return size, asr
 
-    def evaluate_and_log_single_target(self, target):
-        size, asr = self.evaluate(target)
-        self.logger.log_single_target(target, size, asr)  
-
-    def evaluate_all_targets(self):
-        time_start = time.time()
-        for target in range(self.args.num_classes):
-            self.evaluate_and_log_single_target(target)
-        self.logger.print_final_results()  
-        logging.info(f'Generation Time: {(time.time() - time_start) / 60:.4f} m')
+    def evaluate_and_log_single_target(self, target, generate_data, validate_data) :
+        size, asr = self.evaluate(target, generate_data[target], validate_data[target])  
+        self.logger.log_single_target(target, size, asr)

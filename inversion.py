@@ -2,8 +2,8 @@ import numpy as np
 import sys, torch
 
 class JUE_Backdoor:
-    def __init__(self, model, submodel, anchor_positions, shape, num_classes=10, steps=3000,
-                batch_size=32, asr_bound=0.95, init_alpha=1e-3, lr=0.1, clip_max=1.0):
+    def __init__(self, model, submodel, anchor_positions, shape, num_classes=10, steps=2000,
+                batch_size=32, asr_bound=0.9, init_alpha=1e-3, lr=1e-2, clip_max=1.0):
 
         self.model = model
         self.submodel = submodel
@@ -20,11 +20,6 @@ class JUE_Backdoor:
         # Early Stopping Thresholds
         self.inf_counter = 0 
         self.inf_threshold = 100 
-        self.early_stopping_counter = 0
-        self.early_stopping_threshold = 500
-        self.lr_adjust_counter = 0
-        self.lr_adjust_threshold = 500
-        self.lr_decay_factor = 0.9
 
         self.device = torch.device('cuda')
         self.epsilon = 1e-7
@@ -32,6 +27,25 @@ class JUE_Backdoor:
         self.alpha_multiplier_up   = 1.5
         self.alpha_multiplier_down = 1.5 ** 1.5
         self.pattern_shape = self.input_shape
+
+    def check_early_stopping(self, prev_pixel_best, pixel_best):
+        stop_training = False
+
+        if pixel_best == float('inf'):
+            self.inf_counter += 1
+        else:
+            self.inf_counter = 0
+
+        if self.inf_counter >= self.inf_threshold:
+            stop_training = True
+
+        return stop_training
+
+    def init_random_pattern(self):
+        init_pattern = np.random.random(self.pattern_shape) * self.clip_max
+        init_pattern = np.clip(init_pattern, 0.0, self.clip_max)
+        init_pattern = init_pattern / self.clip_max
+        return torch.Tensor(init_pattern).to(self.device)
 
     def initialize_parameters(self):
         # store best results
@@ -41,24 +55,16 @@ class JUE_Backdoor:
         reg_best = float('inf')
         pixel_best  = float('inf')
 
-        # hyper-parameters to dynamically adjust loss weight
-        alpha = self.init_alpha
         alpha = self.init_alpha
         alpha_up_counter   = 0
         alpha_down_counter = 0
 
-        # initialize patterns with random values
-        for i in range(2):
-            init_pattern = np.random.random(self.pattern_shape) * self.clip_max
-            init_pattern = np.clip(init_pattern, 0.0, self.clip_max)
-            init_pattern = init_pattern / self.clip_max
+        pattern_pos_tensor = self.init_random_pattern()
+        pattern_pos_tensor.requires_grad = True
 
-            if i == 0:
-                pattern_pos_tensor = torch.Tensor(init_pattern).to(self.device)
-                pattern_pos_tensor.requires_grad = True
-            else:
-                pattern_neg_tensor = torch.Tensor(init_pattern).to(self.device)
-                pattern_neg_tensor.requires_grad = True
+        pattern_neg_tensor = self.init_random_pattern()
+        pattern_neg_tensor.requires_grad = True
+
         return pattern_best, pattern_pos_best, pattern_neg_best, reg_best,\
             pixel_best, alpha, alpha, alpha_up_counter, alpha_down_counter, pattern_pos_tensor, pattern_neg_tensor
 
@@ -116,33 +122,6 @@ class JUE_Backdoor:
             pattern_best = pattern_pos_best + pattern_neg_best
         return pattern_best, reg_best, pixel_best, pattern_pos_best, pattern_neg_best
     
-    def check_early_stopping(self, prev_pixel_best, pixel_best, optimizer):
-        stop_training = False
-        if pixel_best >= prev_pixel_best:
-            self.early_stopping_counter += 1
-        else:
-            self.early_stopping_counter = 0
-
-        if pixel_best == float('inf'):
-            self.inf_counter += 1
-        else:
-            self.inf_counter = 0
-
-        if self.early_stopping_counter >= self.lr_adjust_threshold:
-            self.lr_adjust_counter += 1
-            if self.lr_adjust_counter == 1:
-                for param_group in optimizer.param_groups:
-                    param_group['lr'] *= self.lr_decay_factor
-                self.early_stopping_counter = 0  # Reset the counter
-            elif self.lr_adjust_counter == 2:
-                # Stop training if learning rate adjustment didn't help
-                stop_training = True
-
-        if self.inf_counter >= self.inf_threshold:
-            stop_training = True
-
-        return stop_training
-
     def adjust_alpha(self, avg_acc, alpha, alpha_up_counter, alpha_down_counter):
         # helper variables for adjusting loss weight
         if avg_acc >= self.asr_bound:
@@ -244,12 +223,11 @@ class JUE_Backdoor:
             pattern_best, reg_best, pixel_best, pattern_pos_best, pattern_neg_best  = self.update_best_pattern(
                 pattern_best, avg_acc, avg_loss_reg, pixel_cur, reg_best, pixel_best, pattern_pos, pattern_neg, 
                         pattern_pos_tensor, pattern_neg_tensor, pattern_pos_best, pattern_neg_best, threshold)
-            
-            stop_training = self.check_early_stopping(prev_pixel_best, pixel_best, optimizer)
-            if stop_training:
-                break
 
             prev_pixel_best = pixel_best
+            check_early_stopping = self.check_early_stopping(prev_pixel_best, pixel_best)
+            if check_early_stopping:
+                break
             alpha, alpha_up_counter, alpha_down_counter = self.adjust_alpha(avg_acc, alpha, alpha_up_counter, alpha_down_counter)
 
             if step % 10 == 0:
