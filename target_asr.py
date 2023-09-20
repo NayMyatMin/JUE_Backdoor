@@ -1,14 +1,15 @@
-import torch
+import torch, torchvision
 from torchvision.datasets import MNIST, CIFAR10
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 
 class TargetASR:
-    def __init__(self, dataset_name, root_path='./data', batch_size=1000):
+    def __init__(self, dataset_name, root_path='./data', batch_size=1):
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.dataset_name = dataset_name
         self.root_path = root_path
         self.batch_size = batch_size
+        self.image_counter = 0 # For saving image
         self.transform = transforms.Compose([transforms.ToTensor()])
         self.clean_loader = self.get_data_loader()
 
@@ -18,6 +19,10 @@ class TargetASR:
         pattern = pattern.to(self.device)
         mask = mask.to(self.device)
         x = mask * (alpha * pattern + (1 - alpha) * x) + (1 - mask) * x
+        self.image_counter += 1
+        # if self.image_counter == 3432: 
+        #     torchvision.utils.save_image(x, 'original_image.png')
+        #     print(f'Trigger Size = {torch.norm(pattern * mask, p=1)}')
         return x
 
     def get_data_loader(self):

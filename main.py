@@ -24,13 +24,15 @@ def main(args):
                 eval_model = Evaluate_Model(model, submodel, model_file_path, args)
                 time_start = time.time()  
                 for target in range(args.num_classes):
-                    # if target == true_target_label: # For Debugging Purpose Only
-                    #     eval_model.evaluate_and_log_single_target(target, generate_data, validate_data)  
                     eval_model.evaluate_and_log_single_target(target, generate_data, validate_data)  
                 eval_model.logger.print_final_results()
+                filtered_triggers = eval_model.filtered_triggers
                 logging.info(f'Generation Time: {(time.time() - time_start) / 60:.4f} m')
             else: 
                 logging.info('Option [{}] is not supported!'.format(args.phase))
+            
+            print("Filtered Backdoored Targets:", [target['Target'] for target in filtered_triggers])
+            weight_masking(model, args.dataset, model_file_path, true_target_label, attack_spec, filtered_triggers)
 
             logging.info(f"{'*'*50}\n")
     

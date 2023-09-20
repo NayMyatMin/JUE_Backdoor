@@ -132,7 +132,7 @@ def train_test_model(swm_model, criterion, clean_val_loader, clean_test_loader, 
         if lr_decay:
             lr_scheduler.step()
     
-def weight_masking(model, dataset_name, model_file_path, true_target_label, attack_spec):
+def weight_masking(model, dataset_name, model_file_path, true_target_label, attack_spec, filtered_triggers):
     outer = 20; inner = 5; batch_size = 32
     clean_val_loader, clean_test_loader, inner_iters = prepare_data(dataset_name, batch_size, inner)
     swm_model, criterion, mask_params = initialize_model(model_file_path, dataset_name)

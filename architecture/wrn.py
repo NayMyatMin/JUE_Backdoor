@@ -106,7 +106,3 @@ class WideResNet(nn.Module):
         out = F.avg_pool2d(x, 8)
         out = out.view(-1, self.nChannels)
         return self.fc(out)
-    
-
-# pattern_pos = 0.5 * (torch.tanh(pattern_pos_tensor) + 1) * self.clip_max
-# pattern_neg = -0.5 * (torch.tanh(pattern_neg_tensor) + 1) * self.clip_max

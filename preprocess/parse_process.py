@@ -27,7 +27,7 @@ class Parse_Process:
         parser.add_argument('--gpu',   default='0',        help='gpu id')
         parser.add_argument('--dataset', choices=['MNIST', 'CIFAR10'], default='MNIST', help='dataset')
         parser.add_argument('--phase', choices=['evaluate'], default='evaluate', help='phase of framework')
-        parser.add_argument('--seed',        default=42, type=int, help='random seed')
+        parser.add_argument('--seed',        default=77, type=int, help='random seed')
         parser.add_argument('--batch_size',  default=32,   type=int, help='batch size')
         parser.add_argument('--num_classes', default=10, type=int, help='number of classes')
         parser.add_argument('--attack_size', default=50,   type=int, help='number of samples for inversion')
@@ -45,7 +45,7 @@ class Parse_Process:
         torch.manual_seed(seed)
     
     def set_model_path(self, dataset):
-        model_paths = {'MNIST': './dataset/M-Patch/', 'CIFAR10': './dataset/C-Patch-4/'}
+        model_paths = {'MNIST': './dataset/M-Blended/', 'CIFAR10': './dataset/C-PaperEg/'}
         return model_paths.get(dataset, 'default_path/')
     
     def get_sub_dirs(self):

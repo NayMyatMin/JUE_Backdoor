@@ -1,9 +1,8 @@
-import os, torch, time, logging
+import os, torch, time, logging, torchvision
 from inversion import JUE_Backdoor
 from tabulate import tabulate
 from architecture.utils import MNIST_Network
 from architecture.wrn import WideResNet
-from preprocess.evaluate_data import Evaluate_Data
 
 logging.basicConfig(format='%(message)s', level=logging.INFO)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -43,6 +42,7 @@ class Evaluate_Model:
         self.submodel = submodel
         self.model_file_path = model_file_path
         self.args = args
+        self.filtered_triggers = []
         self.logger = ResultLogger(self.args.num_classes) 
 
     def generate_backdoor(self, x_val, y_val, target):
@@ -69,8 +69,15 @@ class Evaluate_Model:
         size = torch.norm(pattern, p=1)
         x_val, y_val = validate_data  
         asr = self.evaluate_attack(pattern, x_val, target)
-        return size, asr
+        return pattern, size, asr
 
     def evaluate_and_log_single_target(self, target, generate_data, validate_data) :
-        size, asr = self.evaluate(target, generate_data[target], validate_data[target])  
+        trigger, size, asr = self.evaluate(target, generate_data[target], validate_data[target])  
         self.logger.log_single_target(target, size, asr)
+
+        threshold_size = 30
+        if 0 < size < threshold_size:
+            self.filtered_triggers.append({'Target': target, 'Trigger': trigger, 'Size': size, 'ASR': asr})
+    
+    def get_filtered_triggers(self):
+        return self.filtered_triggers

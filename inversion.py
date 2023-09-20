@@ -2,8 +2,8 @@ import numpy as np
 import sys, torch
 
 class JUE_Backdoor:
-    def __init__(self, model, submodel, anchor_positions, shape, num_classes=10, steps=2000,
-                batch_size=32, asr_bound=0.9, init_alpha=1e-3, lr=1e-2, clip_max=1.0):
+    def __init__(self, model, submodel, anchor_positions, shape, num_classes=10, steps=3000,
+                batch_size=32, asr_bound=0.9, init_alpha=1e-3, lr=0.01, clip_max=1.0):
 
         self.model = model
         self.submodel = submodel
@@ -19,7 +19,7 @@ class JUE_Backdoor:
 
         # Early Stopping Thresholds
         self.inf_counter = 0 
-        self.inf_threshold = 100 
+        self.inf_threshold = 100
 
         self.device = torch.device('cuda')
         self.epsilon = 1e-7
