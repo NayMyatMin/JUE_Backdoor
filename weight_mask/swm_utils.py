@@ -62,14 +62,14 @@ def prepare_data(dataset_name, batch_size, inner, samples=500, num_workers=4):
 
     # Explicitly convert to float32
     if dataset_name == 'MNIST':
-        x_train = x_train.unsqueeze(1).to(dtype=torch.float32)
-        x_test = x_test.unsqueeze(1).to(dtype=torch.float32)
+        x_train = x_train.unsqueeze(1).to(dtype=torch.float32)/255
+        x_test = x_test.unsqueeze(1).to(dtype=torch.float32)/255
     elif dataset_name == 'CIFAR10':
         x_train = torch.tensor(x_train.transpose((0, 3, 1, 2)), dtype=torch.float32)/255
         x_test = torch.tensor(x_test.transpose((0, 3, 1, 2)), dtype=torch.float32)/255  
 
-    y_train = torch.tensor(y_train, dtype=torch.long)
-    y_test = torch.tensor(y_test, dtype=torch.long)
+    y_train = y_train.clone().detach().to(dtype=torch.long)
+    y_test = y_test.clone().detach().to(dtype=torch.long)
     
     # Create Validation and Test Sets
     rand_idx = random.sample(list(range(len(y_test))), int(samples))
